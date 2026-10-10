@@ -654,3 +654,69 @@ pre.output {
     padding: 20px;
   }
 }
+
+/* ---------- Auth ---------- */
+.auth-panel {
+  text-align: center;
+  padding: 32px 20px;
+}
+
+.auth-panel h3 {
+  margin: 0 0 8px;
+}
+
+.auth-panel p {
+  margin: 0 0 18px;
+}
+
+.auth-wrap {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.auth-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.user-chip {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.btn-google {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  color: #111;
+  border: 1px solid var(--border);
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-google:hover {
+  background: var(--panel-2);
+}
+
+.btn-signout {
+  padding: 6px 14px;
+}
+
+.history-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-ghost.danger {
+  color: #b3261e;
+  border-color: #e0b4b0;
+}

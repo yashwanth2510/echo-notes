@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { encodeBlobToWav, formatDuration } from "@/lib/audio";
 import { LANGUAGES } from "@/lib/languages";
+import { createClient } from "@/lib/supabase/client";
 
 type Mode = "mom" | "summary" | "keypoints" | "decisions" | "transcript" | "action";
 type Status = "idle" | "recording" | "processing";
@@ -43,14 +44,49 @@ export default function Recorder() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setHistory(JSON.parse(raw) as HistoryEntry[]);
-    } catch {
-      /* ignore */
-    }
+    const supabase = createClient();
+    supabaseRef.current = supabase;
+    supabase.auth.getSession().then(({ data }) => {
+      const user = data.session?.user ?? null;
+      setUserId(user?.id ?? null);
+      if (user) {
+        supabase
+          .from("notes")
+          .select("id,title,text,mode,language,created_at")
+          .order("created_at", { ascending: false })
+          .limit(25)
+          .then(({ data: rows, error }) => {
+            if (error) {
+              setLoadError(`Could not load saved notes: ${error.message}`);
+              return;
+            }
+            if (rows) {
+              setHistory(
+                rows.map((r) => ({
+                  id: r.id,
+                  title: r.title,
+                  text: r.text,
+                  mode: r.mode as Mode,
+                  language: r.language,
+                  date: new Date(r.created_at).toLocaleString(),
+                }))
+              );
+            }
+          });
+      } else {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) setHistory(JSON.parse(raw) as HistoryEntry[]);
+        } catch {
+          /* ignore */
+        }
+      }
+    });
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -100,10 +136,52 @@ export default function Recorder() {
     };
   }, [status]);
 
-  const persistHistory = (next: HistoryEntry[]) => {
-    setHistory(next);
+  const saveNote = async (entry: HistoryEntry) => {
+    const supabase = supabaseRef.current;
+    if (supabase && userId) {
+      const { data, error } = await supabase
+        .from("notes")
+        .insert({
+          user_id: userId,
+          title: entry.title,
+          text: entry.text,
+          mode: entry.mode,
+          language: entry.language,
+        })
+        .select("id")
+        .single();
+      if (error) {
+        setError(`Could not save note: ${error.message}`);
+        return;
+      }
+      setHistory((prev) => [{ ...entry, id: data.id }, ...prev]);
+    } else {
+      const next = [entry, ...history].slice(0, 25);
+      setHistory(next);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  const deleteNote = async (id: string) => {
+    const supabase = supabaseRef.current;
+    if (supabase && userId) {
+      await supabase.from("notes").delete().eq("id", id);
+    }
+    setHistory((prev) => prev.filter((h) => h.id !== id));
+  };
+
+  const clearHistory = async () => {
+    const supabase = supabaseRef.current;
+    if (supabase && userId) {
+      await supabase.from("notes").delete().eq("user_id", userId);
+    }
+    setHistory([]);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next.slice(0, 25)));
+      localStorage.removeItem(STORAGE_KEY);
     } catch {
       /* ignore */
     }
@@ -199,7 +277,7 @@ export default function Recorder() {
         language,
         date: new Date().toLocaleString(),
       };
-      persistHistory([entry, ...history]);
+      void saveNote(entry);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -340,12 +418,14 @@ export default function Recorder() {
         </>
       )}
 
+      {loadError && <div className="status error">{loadError}</div>}
+
       {history.length > 0 && (
         <>
           <div className="divider" />
           <div className="result-head">
             <h2>Recent notes</h2>
-            <button className="btn-ghost mini" onClick={() => persistHistory([])}>
+            <button className="btn-ghost mini" onClick={() => void clearHistory()}>
               Clear
             </button>
           </div>
@@ -356,9 +436,14 @@ export default function Recorder() {
                 <br />
                 <small>{h.date}</small>
               </span>
-              <button className="btn-ghost" onClick={() => setResult(h.text)}>
-                Open
-              </button>
+              <div className="history-actions">
+                <button className="btn-ghost" onClick={() => setResult(h.text)}>
+                  Open
+                </button>
+                <button className="btn-ghost danger" onClick={() => void deleteNote(h.id)}>
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
         </>

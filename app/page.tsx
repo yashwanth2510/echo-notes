@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Recorder from "@/components/Recorder";
+import AuthGate from "@/components/AuthGate";
 
 function LogoIcon() {
   return (
@@ -67,7 +68,9 @@ export default function Home() {
           <h2>Create your notes</h2>
           <p>Record or upload — get the exact output you want.</p>
         </div>
-        <Recorder />
+        <AuthGate>
+          <Recorder />
+        </AuthGate>
       </section>
 
       <section className="wrap" id="features">
