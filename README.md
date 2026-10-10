@@ -1,4 +1,4 @@
-# Voice MOM
+# Echo Notes
 
 Turn voice notes and meeting recordings into clean transcripts, summaries, and Minutes of
 Meeting (MOM) with action items — right in the browser.
@@ -13,7 +13,7 @@ Meeting (MOM) with action items — right in the browser.
 
 ## 1. Requirements
 
-- Node.js 18+ (you have Node 24)
+- Node.js 18+ (Node 22 recommended)
 - A free OpenRouter API key: https://openrouter.ai/keys
 
 ## 2. Configure your key
@@ -35,7 +35,7 @@ npm install --allow-remote=all
 ```
 
 > `--allow-remote=all` is only needed on this machine because it uses a corporate npm feed
-> (`allow-remote=none` is set). On a normal machine, plain `npm install` works.
+> (`allow-remote=none` is set). On a normal machine (and on Render), plain `npm install` works.
 
 ## 4. Run
 
@@ -55,6 +55,26 @@ npm start
 
 ---
 
+## Deploy on Render (free)
+
+This repo includes a `render.yaml` blueprint.
+
+1. Push the repo to GitHub (already done).
+2. Go to https://dashboard.render.com → **New** → **Blueprint** → connect this repo. Render reads
+   `render.yaml` and creates the `echo-notes` web service.
+   - Or: **New** → **Web Service** → pick the repo, then set Build Command `npm install && npm run build`
+     and Start Command `npm start`.
+3. When prompted for the secret, set **`OPENROUTER_API_KEY`** to your key
+   (it is marked `sync: false`, so it is **never** stored in the repo).
+4. Deploy. Render gives you `https://echo-notes.onrender.com` (name may vary).
+
+Notes:
+- Render's free web service **spins down after ~15 min idle** and cold-starts in ~30–60s on the
+  next request — fine for personal use.
+- `next start` reads the `PORT` env var Render provides automatically; no extra config needed.
+
+---
+
 ## How it works
 
 ```
@@ -70,14 +90,6 @@ Browser mic ──▶ MediaRecorder ──▶ decode + resample to 16 kHz mono W
 - `app/api/summarize/route.ts` — server route: builds the prompt, calls OpenRouter, returns notes.
 - `lib/audio.ts` — converts the recording to a small 16 kHz mono WAV and base64-encodes it.
 - `components/Recorder.tsx` — recording UI, settings, result, and browser history.
-
-## Free deployment notes
-
-- Deploy free on **Vercel** (connect the repo, add `OPENROUTER_API_KEY` in project settings).
-- Free serverless hosts cap request size (~4.5 MB on Vercel). At 16 kHz mono WAV that is roughly
-  **~5 minutes** of audio per request. For longer meetings, host on Cloudflare Workers + R2, a
-  small VM, or split the audio into chunks.
-- OpenRouter's free models are rate-limited; keep recordings reasonably short and expect retries.
 
 ## Ideas to monetize later
 

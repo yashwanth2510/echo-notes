@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Voice MOM — voice notes to Minutes of Meeting",
+  title: "Echo Notes — voice notes to Minutes of Meeting",
   description:
     "Record a voice note or meeting and get a clean transcript, summary, and action items, powered by OpenRouter.",
 };

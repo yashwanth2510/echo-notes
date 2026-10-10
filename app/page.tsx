@@ -6,7 +6,7 @@ export default function Home() {
       <div className="brandbar">
         <div className="logo">🎙️</div>
         <div>
-          <div className="brand-name">Voice MOM</div>
+          <div className="brand-name">Echo Notes</div>
           <div className="brand-sub">Voice notes → transcripts, summaries &amp; action items</div>
         </div>
       </div>

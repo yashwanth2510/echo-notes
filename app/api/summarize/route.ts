@@ -116,7 +116,7 @@ export async function POST(request: Request) {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer": process.env.SITE_URL || "http://localhost:3000",
-        "X-Title": process.env.SITE_NAME || "Voice MOM App",
+        "X-Title": process.env.SITE_NAME || "Echo Notes",
       },
       body: JSON.stringify(payload),
     });

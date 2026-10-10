@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: echo-notes
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: google/gemini-2.5-flash
+      - key: SITE_NAME
+        value: Echo Notes
+      - key: NODE_VERSION
+        value: 22.14.0
