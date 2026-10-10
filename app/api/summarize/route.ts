@@ -13,7 +13,7 @@ type RequestBody = {
 };
 
 const SYSTEM_PROMPTS: Record<Mode, string> = {
-  mom: `You are an expert meeting-notes assistant. You will receive an audio recording (a voice note or meeting).
+  mom: `You are an expert meeting-notes assistant. You will receive a transcript of an audio recording (a voice note or meeting).
 Produce clean Minutes of Meeting in Markdown with these sections, in this order:
 # <a short descriptive title>
 **Duration/Context**: one line if inferable, otherwise omit.
@@ -33,38 +33,152 @@ A Markdown table with columns: | Action | Owner | Due |. Use "Unassigned" / "Not
 ## Follow-ups
 Bullet points of open questions or next steps.
 
-Transcribe faithfully. Do not invent details that were not in the audio. Write "Unclear" if something is inaudible.`,
-  summary: `You are an expert note-taker. You will receive an audio recording.
+Use only what is in the transcript. Do not invent details. Write "Unclear" for inaudible parts.`,
+  summary: `You are an expert note-taker. You will receive a transcript of an audio recording.
 Produce a Markdown response with:
 # <short title>
 ## Summary
 A 3-6 sentence overview.
 ## Key Points
 Bullet points of the important ideas.
-Do not invent details that were not in the audio.`,
+Use only what is in the transcript. Do not invent details.`,
   transcript: `You are a precise transcription engine. Transcribe the audio exactly as spoken.
 Output only the transcript as plain text. Include speaker labels (Speaker 1, Speaker 2, ...) only if you can reliably tell speakers apart. Do not summarize.`,
-  action: `You are an action-item extractor. You will receive an audio recording.
+  action: `You are an action-item extractor. You will receive a transcript of an audio recording.
 Output a Markdown response with only:
 ## Action Items
 A Markdown table with columns: | Action | Owner | Due |.
 Plus a short "## Follow-ups" bullet list if there are unresolved questions.
-Do not invent details that were not in the audio.`,
+Use only what is in the transcript. Do not invent details.`,
 };
 
 const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
   auto: "Detect the spoken language automatically. Write the output in the same language that was spoken.",
-  en: "Write the entire output in English, translating if the audio is in another language. Also include the original-language transcript if it is not English.",
+  en: "Write the entire output in English, translating if the transcript is in another language.",
   hi: "Write the entire output in Hindi (Devanagari), translating if needed. Keep action-item owners as spoken.",
   hinglish:
-    "Write the summary in natural Hinglish (Hindi written in Latin script) if the audio is Hinglish, otherwise keep the spoken language.",
+    "Write the summary in natural Hinglish (Hindi written in Latin script) if the transcript is Hinglish, otherwise keep the spoken language.",
 };
 
+function resolveLanguage(value?: string): string {
+  return value && value in LANGUAGE_INSTRUCTIONS ? value : "auto";
+}
+
+function resolveMode(value?: string): Mode {
+  return value && value in SYSTEM_PROMPTS ? (value as Mode) : "mom";
+}
+
+async function transcribeWithGroq(base64: string, language: string): Promise<string> {
+  const key = process.env.GROQ_API_KEY as string;
+  const bytes = Buffer.from(base64, "base64");
+  const form = new FormData();
+  form.append("file", new Blob([bytes], { type: "audio/wav" }), "audio.wav");
+  form.append("model", process.env.GROQ_WHISPER_MODEL || "whisper-large-v3");
+  form.append("response_format", "json");
+  if (language === "en" || language === "hi") {
+    form.append("language", language);
+  }
+
+  const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}` },
+    body: form,
+  });
+  const raw = await res.text();
+  if (!res.ok) {
+    throw new Error(`Groq transcription failed (${res.status}): ${raw.slice(0, 400)}`);
+  }
+  const data = JSON.parse(raw) as { text?: string };
+  if (!data.text) throw new Error("Groq returned no transcript.");
+  return data.text;
+}
+
+async function transcribeWithOpenRouter(
+  base64: string,
+  format: string,
+  language: string,
+  apiKey: string,
+): Promise<string> {
+  const model = process.env.OPENROUTER_AUDIO_MODEL || "google/gemini-2.5-flash";
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": process.env.SITE_URL || "http://localhost:3000",
+      "X-Title": process.env.SITE_NAME || "Echo Notes",
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPTS.transcript },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: `Transcribe the audio. Language rule: ${LANGUAGE_INSTRUCTIONS[language]}` },
+            { type: "input_audio", input_audio: { data: base64, format } },
+          ],
+        },
+      ],
+    }),
+  });
+  const raw = await res.text();
+  const data = JSON.parse(raw);
+  if (!res.ok) {
+    throw new Error(data?.error?.message || `OpenRouter transcription failed (${res.status})`);
+  }
+  const text = data?.choices?.[0]?.message?.content;
+  if (!text || typeof text !== "string") throw new Error("OpenRouter returned no transcript.");
+  return text;
+}
+
+async function summarizeWithOpenRouter(
+  transcript: string,
+  mode: Mode,
+  language: string,
+  apiKey: string,
+): Promise<string> {
+  const model = process.env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free";
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": process.env.SITE_URL || "http://localhost:3000",
+      "X-Title": process.env.SITE_NAME || "Echo Notes",
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.2,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPTS[mode] },
+        {
+          role: "user",
+          content: `Output language rule: ${LANGUAGE_INSTRUCTIONS[language]}\n\nTranscript:\n"""\n${transcript}\n"""`,
+        },
+      ],
+    }),
+  });
+  const raw = await res.text();
+  const data = JSON.parse(raw);
+  if (!res.ok) {
+    throw new Error(
+      data?.error?.message || data?.error || `OpenRouter summary failed (${res.status})`,
+    );
+  }
+  const text = data?.choices?.[0]?.message?.content;
+  if (!text || typeof text !== "string") throw new Error("OpenRouter returned an empty summary.");
+  return text;
+}
+
 export async function POST(request: Request) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
+  const groqKey = process.env.GROQ_API_KEY;
+  const openRouterKey = process.env.OPENROUTER_API_KEY;
+
+  if (!groqKey && !openRouterKey) {
     return NextResponse.json(
-      { error: "OPENROUTER_API_KEY is not set. Add it to .env.local and restart the dev server." },
+      { error: "Set GROQ_API_KEY (free transcription) and/or OPENROUTER_API_KEY in .env.local." },
       { status: 500 },
     );
   }
@@ -81,78 +195,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing 'audio' (base64) field." }, { status: 400 });
   }
 
-  const mode: Mode =
-    body.mode && body.mode in SYSTEM_PROMPTS ? body.mode : "mom";
-  const language = body.language && body.language in LANGUAGE_INSTRUCTIONS ? body.language : "auto";
+  const mode = resolveMode(body.mode);
+  const language = resolveLanguage(body.language);
   const format = (body.format || "wav").replace(/[^a-z0-9]/gi, "") || "wav";
 
-  const model = process.env.OPENROUTER_MODEL || "google/gemini-2.5-flash";
-
-  const userText = [
-    "Process the attached audio recording as instructed.",
-    `Output language rule: ${LANGUAGE_INSTRUCTIONS[language]}`,
-  ].join("\n");
-
-  const payload = {
-    model,
-    temperature: 0.2,
-    messages: [
-      { role: "system", content: SYSTEM_PROMPTS[mode] },
-      {
-        role: "user",
-        content: [
-          { type: "text", text: userText },
-          { type: "input_audio", input_audio: { data: audio, format } },
-        ],
-      },
-    ],
-  };
-
-  let res: Response;
+  let transcript: string;
+  let provider: string;
   try {
-    res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": process.env.SITE_URL || "http://localhost:3000",
-        "X-Title": process.env.SITE_NAME || "Echo Notes",
-      },
-      body: JSON.stringify(payload),
-    });
+    if (groqKey) {
+      transcript = await transcribeWithGroq(audio, language);
+      provider = "groq:whisper";
+    } else {
+      transcript = await transcribeWithOpenRouter(audio, format, language, openRouterKey as string);
+      provider = "openrouter:audio";
+    }
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 502 });
+  }
+
+  if (mode === "transcript" || !openRouterKey) {
+    return NextResponse.json({ text: transcript, provider });
+  }
+
+  try {
+    const text = await summarizeWithOpenRouter(transcript, mode, language, openRouterKey);
+    return NextResponse.json({ text, provider });
   } catch (err) {
     return NextResponse.json(
-      { error: `Failed to reach OpenRouter: ${(err as Error).message}` },
-      { status: 502 },
+      { text: transcript, provider, warning: (err as Error).message },
+      { status: 200 },
     );
   }
-
-  const raw = await res.text();
-  let data: any;
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    data = null;
-  }
-
-  if (!res.ok) {
-    const message =
-      data?.error?.message || data?.error || raw.slice(0, 500) || `OpenRouter HTTP ${res.status}`;
-    return NextResponse.json({ error: message }, { status: res.status });
-  }
-
-  const text: string | undefined =
-    data?.choices?.[0]?.message?.content ??
-    (Array.isArray(data?.choices?.[0]?.message?.content)
-      ? data.choices[0].message.content.map((c: any) => c?.text ?? "").join("")
-      : undefined);
-
-  if (!text) {
-    return NextResponse.json(
-      { error: "The model returned an empty response. Try a shorter recording or another model." },
-      { status: 502 },
-    );
-  }
-
-  return NextResponse.json({ text, model });
 }

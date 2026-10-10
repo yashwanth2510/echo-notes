@@ -6,10 +6,14 @@ services:
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_WHISPER_MODEL
+        value: whisper-large-v3
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL
-        value: google/gemini-2.5-flash
+        value: meta-llama/llama-3.3-70b-instruct:free
       - key: SITE_NAME
         value: Echo Notes
       - key: NODE_VERSION
