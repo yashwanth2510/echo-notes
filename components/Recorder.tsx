@@ -71,49 +71,55 @@ export default function Recorder() {
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    const supabase = createClient();
-    supabaseRef.current = supabase;
-    supabase.auth.getSession().then(({ data }) => {
-      const user = data.session?.user ?? null;
-      setUserId(user?.id ?? null);
-      if (user) {
-        supabase
-          .from("notes")
-          .select("id,title,text,mode,language,created_at")
-          .order("created_at", { ascending: false })
-          .limit(25)
-          .then(({ data: rows, error }) => {
-            if (error) {
-              setLoadError(`Could not load saved notes: ${error.message}`);
-              return;
-            }
-            if (rows) {
-              setHistory(
-                rows.map((r) => ({
-                  id: r.id,
-                  title: r.title,
-                  text: r.text,
-                  mode: r.mode as Mode,
-                  language: r.language,
-                  date: new Date(r.created_at).toLocaleString(),
-                }))
-              );
-            }
-          });
-      } else {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (raw) setHistory(JSON.parse(raw) as HistoryEntry[]);
-        } catch {
-          /* ignore */
+    const hasSupabase =
+      Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+      Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+    if (hasSupabase) {
+      const supabase = createClient();
+      supabaseRef.current = supabase;
+      supabase.auth.getSession().then(({ data }) => {
+        const user = data.session?.user ?? null;
+        setUserId(user?.id ?? null);
+        if (user) {
+          supabase
+            .from("notes")
+            .select("id,title,text,mode,language,created_at")
+            .order("created_at", { ascending: false })
+            .limit(25)
+            .then(({ data: rows, error }) => {
+              if (error) {
+                setLoadError(`Could not load saved notes: ${error.message}`);
+                return;
+              }
+              if (rows) {
+                setHistory(
+                  rows.map((r) => ({
+                    id: r.id,
+                    title: r.title,
+                    text: r.text,
+                    mode: r.mode as Mode,
+                    language: r.language,
+                    date: new Date(r.created_at).toLocaleString(),
+                  }))
+                );
+              }
+            });
         }
+      });
+    }
+    if (!hasSupabase || !userId) {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) setHistory(JSON.parse(raw) as HistoryEntry[]);
+      } catch {
+        /* ignore */
       }
-    });
+    }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     if (status !== "recording" || !streamRef.current || !canvasRef.current) return;
