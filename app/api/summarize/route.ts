@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
+import { LANGUAGE_NAMES } from "@/lib/languages";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
-type Mode = "mom" | "summary" | "transcript" | "action";
+type Mode = "mom" | "summary" | "keypoints" | "decisions" | "transcript" | "action";
 
 type RequestBody = {
   audio?: string;
@@ -39,8 +40,16 @@ Produce a Markdown response with:
 # <short title>
 ## Summary
 A 3-6 sentence overview.
+Use only what is in the transcript. Do not invent details.`,
+  keypoints: `You are an expert note-taker. You will receive a transcript of an audio recording.
+Produce a Markdown response with:
 ## Key Points
-Bullet points of the important ideas.
+Bullet points of the most important ideas, facts, and figures from the transcript.
+Use only what is in the transcript. Do not invent details.`,
+  decisions: `You are an expert note-taker. You will receive a transcript of an audio recording.
+Produce a Markdown response with:
+## Decisions
+Bullet points of any decisions, confirmations, or agreed next steps. Write "None noted" if none.
 Use only what is in the transcript. Do not invent details.`,
   transcript: `You are a precise transcription engine. Transcribe the audio exactly as spoken.
 Output only the transcript as plain text. Include speaker labels (Speaker 1, Speaker 2, ...) only if you can reliably tell speakers apart. Do not summarize.`,
@@ -52,21 +61,29 @@ Plus a short "## Follow-ups" bullet list if there are unresolved questions.
 Use only what is in the transcript. Do not invent details.`,
 };
 
-const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
-  auto: "Detect the spoken language automatically. Write the output in the same language that was spoken.",
-  en: "Write the entire output in English, translating if the transcript is in another language.",
-  hi: "Write the entire output in Hindi (Devanagari), translating if needed. Keep action-item owners as spoken.",
-  hinglish:
-    "Write the summary in natural Hinglish (Hindi written in Latin script) if the transcript is Hinglish, otherwise keep the spoken language.",
-};
+function languageInstruction(value: string): string {
+  if (value === "auto") {
+    return "Detect the spoken language automatically and write the output in that same language.";
+  }
+  if (value === "hinglish") {
+    return "Write the output in natural Hinglish (Hindi written in Latin script) if the transcript is Hinglish, otherwise keep the spoken language.";
+  }
+  const name = LANGUAGE_NAMES[value];
+  if (!name) {
+    return "Detect the spoken language automatically and write the output in that same language.";
+  }
+  return `Write the ENTIRE output in ${name}. Translate if needed. Keep names and action-item owners as spoken.`;
+}
 
 function resolveLanguage(value?: string): string {
-  return value && value in LANGUAGE_INSTRUCTIONS ? value : "auto";
+  return value && LANGUAGE_NAMES[value] ? value : "auto";
 }
 
 function resolveMode(value?: string): Mode {
   return value && value in SYSTEM_PROMPTS ? (value as Mode) : "mom";
 }
+
+const WHISPER_LANG_EXCLUDED = new Set(["auto", "hinglish"]);
 
 async function transcribeWithGroq(base64: string, language: string): Promise<string> {
   const key = process.env.GROQ_API_KEY as string;
@@ -75,7 +92,7 @@ async function transcribeWithGroq(base64: string, language: string): Promise<str
   form.append("file", new Blob([bytes], { type: "audio/wav" }), "audio.wav");
   form.append("model", process.env.GROQ_WHISPER_MODEL || "whisper-large-v3");
   form.append("response_format", "json");
-  if (language === "en" || language === "hi") {
+  if (!WHISPER_LANG_EXCLUDED.has(language)) {
     form.append("language", language);
   }
 
@@ -96,7 +113,6 @@ async function transcribeWithGroq(base64: string, language: string): Promise<str
 async function transcribeWithOpenRouter(
   base64: string,
   format: string,
-  language: string,
   apiKey: string,
 ): Promise<string> {
   const model = process.env.OPENROUTER_AUDIO_MODEL || "google/gemini-2.5-flash";
@@ -116,7 +132,7 @@ async function transcribeWithOpenRouter(
         {
           role: "user",
           content: [
-            { type: "text", text: `Transcribe the audio. Language rule: ${LANGUAGE_INSTRUCTIONS[language]}` },
+            { type: "text", text: "Transcribe the audio exactly as spoken." },
             { type: "input_audio", input_audio: { data: base64, format } },
           ],
         },
@@ -150,7 +166,7 @@ async function summarizeWithGroq(
         { role: "system", content: SYSTEM_PROMPTS[mode] },
         {
           role: "user",
-          content: `Output language rule: ${LANGUAGE_INSTRUCTIONS[language]}\n\nTranscript:\n"""\n${transcript}\n"""`,
+          content: `Output language rule: ${languageInstruction(language)}\n\nTranscript:\n"""\n${transcript}\n"""`,
         },
       ],
     }),
@@ -158,9 +174,7 @@ async function summarizeWithGroq(
   const raw = await res.text();
   const data = JSON.parse(raw);
   if (!res.ok) {
-    throw new Error(
-      data?.error?.message || data?.error || `Groq summary failed (${res.status})`,
-    );
+    throw new Error(data?.error?.message || data?.error || `Groq summary failed (${res.status})`);
   }
   const text = data?.choices?.[0]?.message?.content;
   if (!text || typeof text !== "string") throw new Error("Groq returned an empty summary.");
@@ -189,7 +203,7 @@ async function summarizeWithOpenRouter(
         { role: "system", content: SYSTEM_PROMPTS[mode] },
         {
           role: "user",
-          content: `Output language rule: ${LANGUAGE_INSTRUCTIONS[language]}\n\nTranscript:\n"""\n${transcript}\n"""`,
+          content: `Output language rule: ${languageInstruction(language)}\n\nTranscript:\n"""\n${transcript}\n"""`,
         },
       ],
     }),
@@ -197,9 +211,7 @@ async function summarizeWithOpenRouter(
   const raw = await res.text();
   const data = JSON.parse(raw);
   if (!res.ok) {
-    throw new Error(
-      data?.error?.message || data?.error || `OpenRouter summary failed (${res.status})`,
-    );
+    throw new Error(data?.error?.message || data?.error || `OpenRouter summary failed (${res.status})`);
   }
   const text = data?.choices?.[0]?.message?.content;
   if (!text || typeof text !== "string") throw new Error("OpenRouter returned an empty summary.");
@@ -240,7 +252,7 @@ export async function POST(request: Request) {
       transcript = await transcribeWithGroq(audio, language);
       provider = "groq:whisper";
     } else {
-      transcript = await transcribeWithOpenRouter(audio, format, language, openRouterKey as string);
+      transcript = await transcribeWithOpenRouter(audio, format, openRouterKey as string);
       provider = "openrouter:audio";
     }
   } catch (err) {
@@ -253,10 +265,16 @@ export async function POST(request: Request) {
 
   const attempts: Array<{ name: string; fn: () => Promise<string> }> = [];
   if (groqKey) {
-    attempts.push({ name: "groq:chat", fn: () => summarizeWithGroq(transcript, mode, language, groqKey) });
+    attempts.push({
+      name: "groq:chat",
+      fn: () => summarizeWithGroq(transcript, mode, language, groqKey),
+    });
   }
   if (openRouterKey) {
-    attempts.push({ name: "openrouter:chat", fn: () => summarizeWithOpenRouter(transcript, mode, language, openRouterKey) });
+    attempts.push({
+      name: "openrouter:chat",
+      fn: () => summarizeWithOpenRouter(transcript, mode, language, openRouterKey),
+    });
   }
 
   const warnings: string[] = [];

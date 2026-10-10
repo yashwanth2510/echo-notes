@@ -1,4 +1,25 @@
+import type { ReactNode } from "react";
 import Recorder from "@/components/Recorder";
+
+function LogoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+    </svg>
+  );
+}
+
+function FeatureIcon({ children }: { children: ReactNode }) {
+  return (
+    <div className="feature-icon">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {children}
+      </svg>
+    </div>
+  );
+}
 
 export default function Home() {
   return (
@@ -6,7 +27,7 @@ export default function Home() {
       <nav className="nav">
         <div className="nav-inner">
           <div className="brandbar nav-brand">
-            <div className="logo">🎙️</div>
+            <div className="logo"><LogoIcon /></div>
             <div>
               <div className="brand-name">Echo Notes</div>
               <div className="brand-sub">Voice → notes</div>
@@ -23,7 +44,7 @@ export default function Home() {
 
       <section className="hero">
         <div className="wrap-narrow">
-          <div className="pill">Free · No install · English / Hindi / Hinglish</div>
+          <div className="pill">Free · No install · 45+ languages</div>
           <h1>
             Speak.
             <br />
@@ -44,7 +65,7 @@ export default function Home() {
         <div id="recorder" className="anchor" />
         <div className="section-title">
           <h2>Create your notes</h2>
-          <p>Record or upload — get notes in seconds.</p>
+          <p>Record or upload — get the exact output you want.</p>
         </div>
         <Recorder />
       </section>
@@ -56,32 +77,56 @@ export default function Home() {
         </div>
         <div className="features">
           <div className="feature-card">
-            <div className="feature-icon">🗣️</div>
+            <FeatureIcon>
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="23" />
+            </FeatureIcon>
             <h3>Speak your notes</h3>
             <p>Meetings, ideas, lectures, dictation — record and let Whisper transcribe accurately.</p>
           </div>
           <div className="feature-card">
-            <div className="feature-icon">📋</div>
+            <FeatureIcon>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+              <path d="M14 2v6h6" />
+              <line x1="9" y1="14" x2="15" y2="14" />
+              <line x1="9" y1="18" x2="13" y2="18" />
+            </FeatureIcon>
             <h3>MOM + action items</h3>
-            <p>Automatic summary, key decisions, and an owner/due-date action table.</p>
+            <p>Automatic summary, key points, decisions, and an owner/due-date action table.</p>
           </div>
           <div className="feature-card">
-            <div className="feature-icon">🌐</div>
-            <h3>Multilingual</h3>
-            <p>English, Hindi, Hinglish, and more with auto language detection.</p>
+            <FeatureIcon>
+              <circle cx="12" cy="12" r="10" />
+              <line x1="2" y1="12" x2="22" y2="12" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z" />
+            </FeatureIcon>
+            <h3>45+ languages</h3>
+            <p>Hindi, Tamil, Bengali, Spanish, Arabic, Japanese and 40 more — with auto-detect.</p>
           </div>
           <div className="feature-card">
-            <div className="feature-icon">🔒</div>
+            <FeatureIcon>
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </FeatureIcon>
             <h3>Private by design</h3>
             <p>Your audio and keys stay server-side. History lives only in your browser.</p>
           </div>
           <div className="feature-card">
-            <div className="feature-icon">💸</div>
+            <FeatureIcon>
+              <line x1="19" y1="5" x2="5" y2="19" />
+              <circle cx="6.5" cy="6.5" r="2.5" />
+              <circle cx="17.5" cy="17.5" r="2.5" />
+            </FeatureIcon>
             <h3>Free</h3>
             <p>Free transcription and summarization on free-tier APIs. No credit card.</p>
           </div>
           <div className="feature-card">
-            <div className="feature-icon">📤</div>
+            <FeatureIcon>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </FeatureIcon>
             <h3>Export anytime</h3>
             <p>Copy or download your notes as Markdown to share anywhere.</p>
           </div>
@@ -102,7 +147,7 @@ export default function Home() {
           <div className="step">
             <div className="step-num">2</div>
             <h3>Transcribe</h3>
-            <p>Groq Whisper converts speech to text (English, Hindi, Hinglish…).</p>
+            <p>Groq Whisper converts speech to text in 45+ languages.</p>
           </div>
           <div className="step">
             <div className="step-num">3</div>
@@ -123,8 +168,8 @@ export default function Home() {
             <div className="price">₹0</div>
             <ul>
               <li>Up to 5 min per recording</li>
-              <li>MOM, summary &amp; action items</li>
-              <li>English / Hindi / Hinglish</li>
+              <li>All outputs: MOM, summary, key points &amp; more</li>
+              <li>45+ languages</li>
               <li>Browser history</li>
             </ul>
             <a href="#recorder" className="btn-landing btn-landing-primary">Start now</a>
