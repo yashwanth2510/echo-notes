@@ -133,13 +133,47 @@ async function transcribeWithOpenRouter(
   return text;
 }
 
+async function summarizeWithGroq(
+  transcript: string,
+  mode: Mode,
+  language: string,
+  apiKey: string,
+): Promise<string> {
+  const model = process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b";
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      temperature: 0.2,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPTS[mode] },
+        {
+          role: "user",
+          content: `Output language rule: ${LANGUAGE_INSTRUCTIONS[language]}\n\nTranscript:\n"""\n${transcript}\n"""`,
+        },
+      ],
+    }),
+  });
+  const raw = await res.text();
+  const data = JSON.parse(raw);
+  if (!res.ok) {
+    throw new Error(
+      data?.error?.message || data?.error || `Groq summary failed (${res.status})`,
+    );
+  }
+  const text = data?.choices?.[0]?.message?.content;
+  if (!text || typeof text !== "string") throw new Error("Groq returned an empty summary.");
+  return text;
+}
+
 async function summarizeWithOpenRouter(
   transcript: string,
   mode: Mode,
   language: string,
   apiKey: string,
 ): Promise<string> {
-  const model = process.env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free";
+  const model = process.env.OPENROUTER_MODEL || "google/gemma-4-31b-it:free";
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -213,17 +247,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: (err as Error).message }, { status: 502 });
   }
 
-  if (mode === "transcript" || !openRouterKey) {
+  if (mode === "transcript") {
     return NextResponse.json({ text: transcript, provider });
   }
 
-  try {
-    const text = await summarizeWithOpenRouter(transcript, mode, language, openRouterKey);
-    return NextResponse.json({ text, provider });
-  } catch (err) {
-    return NextResponse.json(
-      { text: transcript, provider, warning: (err as Error).message },
-      { status: 200 },
-    );
+  const attempts: Array<{ name: string; fn: () => Promise<string> }> = [];
+  if (groqKey) {
+    attempts.push({ name: "groq:chat", fn: () => summarizeWithGroq(transcript, mode, language, groqKey) });
   }
+  if (openRouterKey) {
+    attempts.push({ name: "openrouter:chat", fn: () => summarizeWithOpenRouter(transcript, mode, language, openRouterKey) });
+  }
+
+  const warnings: string[] = [];
+  for (const attempt of attempts) {
+    try {
+      const text = await attempt.fn();
+      return NextResponse.json({ text, provider, summarizedBy: attempt.name });
+    } catch (err) {
+      warnings.push(`${attempt.name}: ${(err as Error).message}`);
+    }
+  }
+
+  return NextResponse.json({ text: transcript, provider, warning: warnings.join(" | ") });
 }

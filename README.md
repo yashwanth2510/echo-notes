@@ -4,7 +4,7 @@ Turn voice notes and meeting recordings into clean transcripts, summaries, and M
 Meeting (MOM) with action items — right in the browser.
 
 - **Record in the browser** (or upload an audio file)
-- **Free transcription** with Groq Whisper, **free summarization** with an OpenRouter free model
+- **100% free pipeline**: Groq Whisper (transcription) + Groq `gpt-oss-120b` (summarization)
 - **English / Hindi / Hinglish / auto-detect**
 - **Free to run**: no database, notes are saved in your browser only
 - All API keys live **server-side** (never exposed to the browser)
@@ -14,9 +14,7 @@ Meeting (MOM) with action items — right in the browser.
 ## 1. Requirements
 
 - Node.js 18+ (Node 22 recommended)
-- A free **Groq** API key (transcription): https://console.groq.com/keys
-- A free **OpenRouter** API key (summarization): https://openrouter.ai/keys
-  (free text models work with $0 balance)
+- A free **Groq** API key: https://console.groq.com/keys
 
 ## 2. Configure your keys
 
@@ -25,15 +23,14 @@ Copy `.env.example` to `.env.local` and fill in:
 ```
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxx
 GROQ_WHISPER_MODEL=whisper-large-v3
-
-OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxx
-OPENROUTER_MODEL=meta-llama/llama-3.3-70b-instruct:free
+GROQ_CHAT_MODEL=openai/gpt-oss-120b
 ```
 
-> Pipeline: **Groq Whisper** turns audio → text (free), then an **OpenRouter free model** turns
-> text → summary/MOM (free). Change `OPENROUTER_MODEL` to any model you like; a `:free` model
-> needs $0 balance. If `GROQ_API_KEY` is empty, the app falls back to OpenRouter audio, which
-> requires a paid balance.
+> Pipeline: **Groq Whisper** turns audio → text, then **Groq chat model** turns text →
+> summary/MOM. Both are free-tier.
+>
+> An OpenRouter key is optional: `OPENROUTER_API_KEY=sk-or-v1-...` is used only as a fallback
+> if Groq's chat step fails (e.g. rate-limited). Set `OPENROUTER_MODEL` to a `:free` model.
 
 ## 3. Install
 
@@ -71,8 +68,8 @@ This repo includes a `render.yaml` blueprint.
    `render.yaml` and creates the `echo-notes` web service.
    - Or: **New** → **Web Service** → pick the repo, Build Command `npm install && npm run build`,
      Start Command `npm start`.
-3. Set the two secrets when prompted (both `sync: false`, so never stored in the repo):
-   **`GROQ_API_KEY`** and **`OPENROUTER_API_KEY`**.
+3. Set the secret when prompted (it is `sync: false`, so **never** stored in the repo):
+   **`GROQ_API_KEY`** = your key. (Optionally also `OPENROUTER_API_KEY` for the summary fallback.)
 4. Deploy. Render gives you `https://echo-notes.onrender.com` (name may vary).
 
 Notes:
@@ -89,21 +86,21 @@ Browser mic ─▶ MediaRecorder ─▶ decode + resample to 16 kHz mono WAV
         │
         ▼  POST base64 wav ─▶ /api/summarize  (Next.js route, holds the keys)
         │
-        ├─ Groq Whisper (free)            ─▶ transcript
-        └─ OpenRouter free model (free)   ─▶ transcript ─▶ summary / MOM / action items
+        ├─ Groq Whisper (free)               ─▶ transcript
+        └─ Groq gpt-oss-120b (free), fallback OpenRouter
+                                             ─▶ summary / MOM / action items
         ▼
    Markdown result shown, copied, downloaded, and saved in localStorage
 ```
 
-- `app/api/summarize/route.ts` — transcribes with Groq, summarizes with OpenRouter.
+- `app/api/summarize/route.ts` — transcribes with Groq, summarizes with Groq (OpenRouter fallback).
 - `lib/audio.ts` — converts the recording to a small 16 kHz mono WAV and base64-encodes it.
 - `components/Recorder.tsx` — recording UI, settings, result, and browser history.
 
 ## Free-tier notes
 
 - Groq Whisper free tier has per-minute rate limits; keep recordings reasonably short.
-- OpenRouter free models are limited (~50 requests/day) and may be rate-limited.
-- If a summary step fails, the app returns the **transcript** anyway (with a warning).
+- If both summarizers fail, the app returns the **transcript** anyway (with a warning).
 
 ## Ideas to monetize later
 
