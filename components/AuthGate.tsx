@@ -38,15 +38,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }, [configured]);
 
   if (!configured) {
-    return (
-      <div className="card auth-panel">
-        <p>Sign in is not enabled yet.</p>
-        <p className="muted">
-          Set <code>NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
-          <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to enable accounts.
-        </p>
-      </div>
-    );
+    return <>{children}</>;
   }
 
   if (status === "loading") {

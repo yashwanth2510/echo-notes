@@ -720,3 +720,46 @@ pre.output {
   color: #b3261e;
   border-color: #e0b4b0;
 }
+
+/* ---------- Local processing ---------- */
+.hint p {
+  margin: 6px 0;
+}
+
+.hint p:first-child {
+  margin-top: 0;
+}
+
+.processing {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.timer-small {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.progress-track {
+  height: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 8px;
+  max-width: 480px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #111111;
+  border-radius: 999px;
+  transition: width 0.3s;
+}
+
+.progress-meta {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}

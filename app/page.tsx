@@ -53,7 +53,8 @@ export default function Home() {
           </h1>
           <p className="lead hero-lead">
             Record a voice note, a meeting, or a class. Echo Notes transcribes it and turns it
-            into a clean summary with decisions and action items — right in your browser.
+            into a clean summary with decisions and action items —{" "}
+            <strong>all of it runs in your browser</strong>, fully offline.
           </p>
           <div className="hero-cta">
             <a href="#recorder" className="btn-landing btn-landing-primary">Start recording</a>
@@ -86,7 +87,7 @@ export default function Home() {
               <line x1="12" y1="19" x2="12" y2="23" />
             </FeatureIcon>
             <h3>Speak your notes</h3>
-            <p>Meetings, ideas, lectures, dictation — record and let Whisper transcribe accurately.</p>
+            <p>Meetings, ideas, lectures, dictation — record and let Whisper transcribe accurately on this device.</p>
           </div>
           <div className="feature-card">
             <FeatureIcon>
@@ -113,7 +114,7 @@ export default function Home() {
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </FeatureIcon>
             <h3>Private by design</h3>
-            <p>Your audio and keys stay server-side. History lives only in your browser.</p>
+            <p>Everything happens on your device — your voice never leaves your browser or your PC.</p>
           </div>
           <div className="feature-card">
             <FeatureIcon>
@@ -122,7 +123,7 @@ export default function Home() {
               <circle cx="17.5" cy="17.5" r="2.5" />
             </FeatureIcon>
             <h3>Free</h3>
-            <p>Free transcription and summarization on free-tier APIs. No credit card.</p>
+            <p>No subscriptions, no API keys, no credit card. Runs on models living in your browser.</p>
           </div>
           <div className="feature-card">
             <FeatureIcon>
@@ -150,12 +151,12 @@ export default function Home() {
           <div className="step">
             <div className="step-num">2</div>
             <h3>Transcribe</h3>
-            <p>Groq Whisper converts speech to text in 45+ languages.</p>
+            <p>Whisper runs locally in your browser and converts speech to text in 45+ languages.</p>
           </div>
           <div className="step">
             <div className="step-num">3</div>
             <h3>Get your MOM</h3>
-            <p>A GPT-class model writes the summary, decisions, and action items.</p>
+            <p>A local GPT-class model (Qwen2.5) writes the summary, decisions, and action items.</p>
           </div>
         </div>
       </section>
@@ -194,9 +195,9 @@ export default function Home() {
 
       <footer className="footer">
         <p>
-          Built with Next.js · Transcribed by Groq Whisper · Summarized by GPT-class models.
+          Built with Next.js · Whisper &amp; Qwen2.5 running locally in your browser.
           <br />
-          Powered by your own API keys — you stay in control.
+          Your voice never leaves your device — free forever, even offline.
         </p>
       </footer>
     </main>

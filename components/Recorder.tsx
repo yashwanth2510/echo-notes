@@ -1,12 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { encodeBlobToWav, formatDuration } from "@/lib/audio";
+import { decodeToPcm16k, formatDuration } from "@/lib/audio";
 import { LANGUAGES } from "@/lib/languages";
 import { createClient } from "@/lib/supabase/client";
+import {
+  transcribe,
+  summarize,
+  WHISPER_MODEL,
+  LLM_MODEL,
+  type ModelProgress,
+} from "@/lib/local-ai";
 
 type Mode = "mom" | "summary" | "keypoints" | "decisions" | "transcript" | "action";
 type Status = "idle" | "recording" | "processing";
+type Step = "" | "decoding" | "transcribing" | "summarizing";
 
 type HistoryEntry = {
   id: string;
@@ -28,6 +36,18 @@ const MODES: { value: Mode; label: string }[] = [
   { value: "transcript", label: "Transcript" },
 ];
 
+const STEP_LABELS: Record<string, string> = {
+  decoding: "Converting audio…",
+  transcribing: "Transcribing on this device (Whisper)…",
+  summarizing: "Writing your notes (Qwen2.5)…",
+};
+
+function formatBytes(bytes: number): string {
+  if (!bytes) return "0 MB";
+  const mb = bytes / (1024 * 1024);
+  return mb > 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(0)} MB`;
+}
+
 export default function Recorder() {
   const [status, setStatus] = useState<Status>("idle");
   const [seconds, setSeconds] = useState(0);
@@ -37,6 +57,8 @@ export default function Recorder() {
   const [error, setError] = useState("");
   const [usedProvider, setUsedProvider] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [step, setStep] = useState<Step>("");
+  const [progress, setProgress] = useState<ModelProgress | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
@@ -136,6 +158,19 @@ export default function Recorder() {
     };
   }, [status]);
 
+  const startTimer = () => {
+    setSeconds(0);
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
+  };
+
+  const stopTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
   const saveNote = async (entry: HistoryEntry) => {
     const supabase = supabaseRef.current;
     if (supabase && userId) {
@@ -151,7 +186,7 @@ export default function Recorder() {
         .select("id")
         .single();
       if (error) {
-        setError(`Could not save note: ${error.message}`);
+        setError(`Note was created but could not be saved: ${error.message}`);
         return;
       }
       setHistory((prev) => [{ ...entry, id: data.id }, ...prev]);
@@ -184,19 +219,6 @@ export default function Recorder() {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
       /* ignore */
-    }
-  };
-
-  const startTimer = () => {
-    setSeconds(0);
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
-  };
-
-  const stopTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
     }
   };
 
@@ -244,45 +266,56 @@ export default function Recorder() {
 
   const processBlob = async (blob: Blob) => {
     setStatus("processing");
+    setError("");
+    setProgress(null);
     try {
-      const encoded = await encodeBlobToWav(blob);
-      const res = await fetch("/api/summarize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          audio: encoded.base64,
-          format: "wav",
-          mode,
-          language,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || `Request failed (${res.status})`);
+      setStep("decoding");
+      const { samples } = await decodeToPcm16k(blob);
+
+      setStep("transcribing");
+      const onProgress = (p: ModelProgress) => {
+        if (p.status === "download") setProgress(p);
+      };
+      const transcript = await transcribe(samples, language, onProgress);
+
+      let text = transcript;
+      if (mode !== "transcript") {
+        setStep("summarizing");
+        text = await summarize(transcript, mode, language, onProgress);
       }
-      setResult(data.text);
+
+      setResult(text);
+      const short = [WHISPER_MODEL, LLM_MODEL]
+        .map((m) => (m.includes("/") ? m.split("/").pop() : m))
+        .filter(Boolean)
+        .join(" + ");
       setUsedProvider(
-        [data.provider, data.summarizedBy].filter(Boolean).join(" + ") || "",
+        `in your browser (${short})${mode === "transcript" ? "" : " · done locally"}`,
       );
+
       const firstLine =
-        data.text
+        text
           .split("\n")
-          .map((l: string) => l.replace(/^#+\s*/, "").trim())
-          .find((l: string) => l.length > 0) || "Voice note";
+          .map((l) => l.replace(/^#+\s*/, "").trim())
+          .find((l) => l.length > 0) || "Voice note";
       const entry: HistoryEntry = {
         id: String(Date.now()),
         title: firstLine.slice(0, 70),
-        text: data.text,
+        text,
         mode,
         language,
         date: new Date().toLocaleString(),
       };
       void saveNote(entry);
     } catch (err) {
-      setError((err as Error).message);
+      setError(
+        `${(err as Error).message} If this is the first run, the AI models are downloading — try again in a minute.`,
+      );
     } finally {
       setStatus("idle");
       setSeconds(0);
+      setStep("");
+      setProgress(null);
     }
   };
 
@@ -305,6 +338,7 @@ export default function Recorder() {
   };
 
   const busy = status === "processing";
+  const downloading = progress && progress.status === "download";
 
   return (
     <div>
@@ -383,16 +417,41 @@ export default function Recorder() {
           )}
 
           {busy && (
-            <span className="timer">
-              <span className="spinner" />
-              Transcribing &amp; summarizing…
-            </span>
+            <div className="processing">
+              {" "}
+              {downloading ? (
+                <>
+                  <span className="timer-small">
+                    <span className="spinner" /> Downloading AI models (first run only)…
+                  </span>
+                  <div className="progress-track">
+                    <div
+                      className="progress-fill"
+                      style={{ width: `${Math.min(100, Math.round((progress.progress || 0) * 100))}%` }}
+                    />
+                  </div>
+                  <small className="progress-meta">
+                    {progress.file} · {formatBytes(progress.loaded)} / {formatBytes(progress.total)}
+                  </small>
+                </>
+              ) : (
+                <span className="timer">
+                  <span className="spinner" /> {STEP_LABELS[step] || "Working…"}
+                </span>
+              )}
+            </div>
           )}
         </div>
 
         <div className="hint">
-          Tip: speak clearly, one meeting per recording. 16&nbsp;kHz mono audio is used to keep
-          uploads small. Recordings longer than ~5&nbsp;minutes may exceed free hosting upload limits.
+          <p>
+            <strong>Everything runs on this device.</strong> Your voice never leaves your browser.
+            First use downloads the AI models (~500&nbsp;MB total), then it works offline.
+          </p>
+          <p>
+            Tip: speak clearly, one meeting per recording. Recordings longer than ~5&nbsp;minutes
+            take longer to process on less powerful machines.
+          </p>
         </div>
 
         {error && <div className="status error">{error}</div>}
