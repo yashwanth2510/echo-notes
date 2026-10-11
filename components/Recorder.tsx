@@ -40,6 +40,7 @@ const STEP_LABELS: Record<string, string> = {
   decoding: "Converting audio…",
   transcribing: "Transcribing on this device (Whisper)…",
   summarizing: "Writing your notes (Qwen2.5)…",
+  downloading: "Downloading AI models…",
 };
 
 function formatBytes(bytes: number): string {
@@ -52,7 +53,7 @@ export default function Recorder() {
   const [status, setStatus] = useState<Status>("idle");
   const [seconds, setSeconds] = useState(0);
   const [mode, setMode] = useState<Mode>("mom");
-  const [language, setLanguage] = useState("auto");
+  const [language, setLanguage] = useState("en");
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [usedProvider, setUsedProvider] = useState("");
@@ -280,14 +281,26 @@ export default function Recorder() {
 
       setStep("transcribing");
       const onProgress = (p: ModelProgress) => {
-        if (p.status === "download") setProgress(p);
+        // transformers.js v4 streams initiate/download/progress_total/progress events.
+        // Normalize any of them into a single "downloading" state for the progress bar.
+        if (p.status === "initiate" || p.status === "download" || p.status === "progress_total" || p.status === "progress" || p.status === "done") {
+          setProgress((prev) => ({
+            status: "download",
+            file: p.file || prev?.file || "model files",
+            loaded: p.loaded,
+            total: p.total,
+            progress: Math.min(1, p.progress ?? prev?.progress ?? 0),
+          }));
+        }
       };
       const transcript = await transcribe(samples, language, onProgress);
+      setProgress(null);
 
       let text = transcript;
       if (mode !== "transcript") {
         setStep("summarizing");
         text = await summarize(transcript, mode, language, onProgress);
+        setProgress(null);
       }
 
       setResult(text);
@@ -425,20 +438,25 @@ export default function Recorder() {
           {busy && (
             <div className="processing">
               {" "}
-              {downloading ? (
+              {downloading && progress && progress.file ? (
                 <>
                   <span className="timer-small">
-                    <span className="spinner" /> Downloading AI models (first run only)…
+                    <span className="spinner" /> Downloading AI models (first run only)…{" "}
+                    {progress.file}
                   </span>
                   <div className="progress-track">
                     <div
                       className="progress-fill"
-                      style={{ width: `${Math.min(100, Math.round((progress.progress || 0) * 100))}%` }}
+                      style={{
+                        width: `${Math.min(100, Math.round((progress.progress || 0) * 100))}%`,
+                      }}
                     />
                   </div>
-                  <small className="progress-meta">
-                    {progress.file} · {formatBytes(progress.loaded)} / {formatBytes(progress.total)}
-                  </small>
+                  {progress.total > 0 && (
+                    <small className="progress-meta">
+                      {formatBytes(progress.loaded)} / {formatBytes(progress.total)}
+                    </small>
+                  )}
                 </>
               ) : (
                 <span className="timer">
@@ -455,8 +473,9 @@ export default function Recorder() {
             First use downloads the AI models (~500&nbsp;MB total), then it works offline.
           </p>
           <p>
-            Tip: speak clearly, one meeting per recording. Recordings longer than ~5&nbsp;minutes
-            take longer to process on less powerful machines.
+            Browser Whisper cannot auto-detect languages, so pick your language above for best
+            accuracy (English is the default). Speak clearly and record one meeting at a time;
+            longer recordings take longer on less powerful machines.
           </p>
         </div>
 

@@ -5,7 +5,7 @@ export type LanguageOption = {
 };
 
 export const LANGUAGES: LanguageOption[] = [
-  { value: "auto", label: "🌐 Auto-detect", name: "the spoken language" },
+  { value: "auto", label: "Auto (defaults to English)", name: "English" },
   { value: "en", label: "English", name: "English" },
   { value: "hinglish", label: "Hinglish", name: "natural Hinglish (Hindi written in Latin script)" },
   { value: "hi", label: "Hindi (हिन्दी)", name: "Hindi (Devanagari)" },
