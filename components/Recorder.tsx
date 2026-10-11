@@ -7,8 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 import {
   transcribe,
   summarize,
-  WHISPER_MODEL,
-  LLM_MODEL,
   type ModelProgress,
 } from "@/lib/local-ai";
 
@@ -38,8 +36,8 @@ const MODES: { value: Mode; label: string }[] = [
 
 const STEP_LABELS: Record<string, string> = {
   decoding: "Converting audio…",
-  transcribing: "Transcribing on this device (Whisper)…",
-  summarizing: "Writing your notes (Qwen2.5)…",
+  transcribing: "Transcribing on this device…",
+  summarizing: "Writing your notes…",
   downloading: "Downloading AI models…",
 };
 
@@ -304,13 +302,7 @@ export default function Recorder() {
       }
 
       setResult(text);
-      const short = [WHISPER_MODEL, LLM_MODEL]
-        .map((m) => (m.includes("/") ? m.split("/").pop() : m))
-        .filter(Boolean)
-        .join(" + ");
-      setUsedProvider(
-        `in your browser (${short})${mode === "transcript" ? "" : " · done locally"}`,
-      );
+      setUsedProvider("runs on this device · nothing leaves your browser");
 
       const firstLine =
         text
@@ -438,21 +430,20 @@ export default function Recorder() {
           {busy && (
             <div className="processing">
               {" "}
-              {downloading && progress && progress.file ? (
+              {downloading ? (
                 <>
                   <span className="timer-small">
-                    <span className="spinner" /> Downloading AI models (first run only)…{" "}
-                    {progress.file}
+                    <span className="spinner" /> Downloading AI models (first run only)…
                   </span>
                   <div className="progress-track">
                     <div
                       className="progress-fill"
                       style={{
-                        width: `${Math.min(100, Math.round((progress.progress || 0) * 100))}%`,
+                        width: `${Math.min(100, Math.round((progress?.progress || 0) * 100))}%`,
                       }}
                     />
                   </div>
-                  {progress.total > 0 && (
+                  {progress && progress.total > 0 && (
                     <small className="progress-meta">
                       {formatBytes(progress.loaded)} / {formatBytes(progress.total)}
                     </small>
@@ -476,8 +467,8 @@ export default function Recorder() {
             model on first use.
           </p>
           <p>
-            Browser Whisper cannot auto-detect languages, so pick your language above for best
-            accuracy (English is the default). Speak clearly and record one meeting at a time;
+            Browser transcription can't auto-detect languages, so pick your language above for
+            best accuracy (English is the default). Speak clearly and record one meeting at a time;
             longer recordings take longer on less powerful machines.
           </p>
         </div>

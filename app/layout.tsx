@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Echo Notes — voice notes to Minutes of Meeting",
   description:
-    "Record a voice note or meeting and get a clean transcript, summary, and action items, powered by OpenRouter.",
+    "Record a voice note or meeting and get a clean transcript, summary, and action items — everything runs on your device, free and offline.",
 };
 
 export default function RootLayout({

@@ -87,7 +87,7 @@ export default function Home() {
               <line x1="12" y1="19" x2="12" y2="23" />
             </FeatureIcon>
             <h3>Speak your notes</h3>
-            <p>Meetings, ideas, lectures, dictation — record and let Whisper transcribe accurately on this device.</p>
+            <p>Meetings, ideas, lectures, dictation — record and let on-device AI transcribe accurately, right where you are.</p>
           </div>
           <div className="feature-card">
             <FeatureIcon>
@@ -151,12 +151,12 @@ export default function Home() {
           <div className="step">
             <div className="step-num">2</div>
             <h3>Transcribe</h3>
-            <p>Whisper runs locally in your browser and converts speech to text in 45+ languages.</p>
+            <p>An on-device speech engine converts your voice to text in 45+ languages.</p>
           </div>
           <div className="step">
             <div className="step-num">3</div>
             <h3>Get your MOM</h3>
-            <p>A local GPT-class model (Qwen2.5) writes the summary, decisions, and action items.</p>
+            <p>A local AI model writes the summary, decisions, and action items — no cloud needed.</p>
           </div>
         </div>
       </section>
@@ -195,7 +195,7 @@ export default function Home() {
 
       <footer className="footer">
         <p>
-          Built with Next.js · Whisper &amp; Qwen2.5 running locally in your browser.
+          Built with Next.js · Everything runs locally in your browser.
           <br />
           Your voice never leaves your device — free forever, even offline.
         </p>
