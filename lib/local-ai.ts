@@ -9,6 +9,7 @@ export const LLM_MODEL =
   process.env.NEXT_PUBLIC_LLM_MODEL || "onnx-community/Qwen2.5-0.5B-Instruct";
 export const LLM_DTYPE = process.env.NEXT_PUBLIC_LLM_DTYPE || "q8";
 export const DEVICE = process.env.NEXT_PUBLIC_TRANSFORMER_DEVICE || "wasm";
+export const WASM_PATH = process.env.NEXT_PUBLIC_WASM_PATH || "";
 
 export type ModelProgress = {
   file: string;
@@ -40,6 +41,15 @@ async function getHF(): Promise<HFModule> {
     hfPromise = import("@huggingface/transformers").then((m) => {
       m.env.allowLocalModels = false;
       m.env.useBrowserCache = true;
+      if (WASM_PATH) {
+        try {
+          (m.env as unknown as {
+            backends: { onnx: { wasm: { wasmPaths: string } } };
+          }).backends.onnx.wasm.wasmPaths = WASM_PATH;
+        } catch {
+          // Older/newer runtime layout; ignore and use default CDN paths.
+        }
+      }
       return m as unknown as HFModule;
     });
   }

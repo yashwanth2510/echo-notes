@@ -1,0 +1,112 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "public/**"
+      - "android/**"
+      - "capacitor.config.ts"
+      - "next.config.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/android-apk.yml"
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web (static export, points at bundled models + wasm)
+        env:
+          NEXT_PUBLIC_WHISPER_MODEL: https://localhost/models/whisper-large-v3-turbo
+          NEXT_PUBLIC_WHISPER_DTYPE: q4f16
+          NEXT_PUBLIC_LLM_MODEL: https://localhost/models/Qwen2.5-0.5B-Instruct
+          NEXT_PUBLIC_LLM_DTYPE: q8
+          NEXT_PUBLIC_TRANSFORMER_DEVICE: wasm
+          NEXT_PUBLIC_WASM_PATH: https://localhost/onnx-wasm/
+        run: npm run build
+
+      - name: Download speech + summary models into the bundle
+        run: |
+          set -e
+          HF=https://huggingface.co
+          get() { curl -fSL --retry 3 --retry-delay 5 -o "$2" "$1" || echo "  (skip optional: $1)"; }
+
+          W=out/models/whisper-large-v3-turbo
+          mkdir -p "$W/onnx"
+          R=$HF/onnx-community/whisper-large-v3-turbo/resolve/main
+          get "$R/config.json" "$W/config.json"
+          get "$R/generation_config.json" "$W/generation_config.json"
+          get "$R/preprocessor_config.json" "$W/preprocessor_config.json"
+          get "$R/tokenizer.json" "$W/tokenizer.json"
+          get "$R/tokenizer_config.json" "$W/tokenizer_config.json"
+          get "$R/special_tokens_map.json" "$W/special_tokens_map.json"
+          get "$R/added_tokens.json" "$W/added_tokens.json"
+          get "$R/onnx/encoder_model_q4f16.onnx" "$W/onnx/encoder_model_q4f16.onnx"
+          get "$R/onnx/decoder_model_merged_q4f16.onnx" "$W/onnx/decoder_model_merged_q4f16.onnx"
+
+          Q=out/models/Qwen2.5-0.5B-Instruct
+          mkdir -p "$Q/onnx"
+          RQ=$HF/onnx-community/Qwen2.5-0.5B-Instruct/resolve/main
+          get "$RQ/config.json" "$Q/config.json"
+          get "$RQ/generation_config.json" "$Q/generation_config.json"
+          get "$RQ/tokenizer.json" "$Q/tokenizer.json"
+          get "$RQ/tokenizer_config.json" "$Q/tokenizer_config.json"
+          get "$RQ/vocab.json" "$Q/vocab.json"
+          get "$RQ/merges.txt" "$Q/merges.txt"
+          get "$RQ/special_tokens_map.json" "$Q/special_tokens_map.json"
+          get "$RQ/onnx/decoder_model_merged_quantized.onnx" "$Q/onnx/decoder_model_merged_quantized.onnx"
+
+          echo "Bundled model size:"; du -sh out/models
+
+      - name: Bundle ONNX Runtime WASM files
+        run: |
+          mkdir -p out/onnx-wasm
+          cp node_modules/onnxruntime-web/dist/ort-wasm-* out/onnx-wasm/ 2>/dev/null || true
+          ls -la out/onnx-wasm | head
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null 2>&1 || true
+
+      - name: Build debug APK
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Show APK size
+        run: ls -lh android/app/build/outputs/apk/debug/
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: echo-notes-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30

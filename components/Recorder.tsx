@@ -227,11 +227,37 @@ export default function Recorder() {
     }
   };
 
+  const ensureMicPermission = async () => {
+    const perms = (
+      window as unknown as {
+        Capacitor?: {
+          Plugins?: {
+            Permissions?: {
+              checkPermissions: (o: { permissions: string[] }) => Promise<Record<string, string>>;
+              requestPermissions: (o: { permissions: string[] }) => Promise<Record<string, string>>;
+            };
+          };
+        };
+      }
+    ).Capacitor?.Plugins?.Permissions;
+    if (!perms) return;
+    const REC = "android.permission.RECORD_AUDIO";
+    try {
+      const status = await perms.checkPermissions({ permissions: [REC] });
+      if (status[REC] !== "granted") {
+        await perms.requestPermissions({ permissions: [REC] });
+      }
+    } catch {
+      // Fall back to the browser permission prompt.
+    }
+  };
+
   const startRecording = async () => {
     setError("");
     setResult("");
     setUsedProvider("");
     try {
+      await ensureMicPermission();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       const recorder = new MediaRecorder(stream);
