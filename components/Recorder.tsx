@@ -464,8 +464,8 @@ export default function Recorder() {
             <strong>Everything runs on this device.</strong> Your voice never leaves your browser.
             Models download once and are cached. Choose{" "}
             <strong>Transcript</strong> as the output to skip the summary model entirely
-            (fastest — ~75&nbsp;MB download); other outputs also download a ~490&nbsp;MB summary
-            model on first use.
+            (fastest — ~540&nbsp;MB download); other outputs also download a ~490&nbsp;MB summary
+            model on first use. Best-accuracy multilingual speech model is included.
           </p>
           <p>
             Browser transcription can't auto-detect languages, so pick your language above for
