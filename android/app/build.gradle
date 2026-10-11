@@ -22,6 +22,10 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    androidResources {
+        // Model weights are already compressed; don't inflate them in memory during packaging.
+        noCompress 'onnx'
+    }
 }
 
 repositories {
