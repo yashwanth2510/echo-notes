@@ -3,11 +3,11 @@
 import { LANGUAGE_NAMES } from "@/lib/languages";
 
 export const WHISPER_MODEL =
-  process.env.NEXT_PUBLIC_WHISPER_MODEL || "Xenova/whisper-small";
+  process.env.NEXT_PUBLIC_WHISPER_MODEL || "Xenova/whisper-base";
 export const WHISPER_DTYPE = process.env.NEXT_PUBLIC_WHISPER_DTYPE || "q8";
 export const LLM_MODEL =
   process.env.NEXT_PUBLIC_LLM_MODEL || "onnx-community/Qwen2.5-0.5B-Instruct";
-export const LLM_DTYPE = process.env.NEXT_PUBLIC_LLM_DTYPE || "q4";
+export const LLM_DTYPE = process.env.NEXT_PUBLIC_LLM_DTYPE || "q8";
 export const DEVICE = process.env.NEXT_PUBLIC_TRANSFORMER_DEVICE || "wasm";
 
 export type ModelProgress = {

@@ -470,7 +470,10 @@ export default function Recorder() {
         <div className="hint">
           <p>
             <strong>Everything runs on this device.</strong> Your voice never leaves your browser.
-            First use downloads the AI models (~500&nbsp;MB total), then it works offline.
+            Models download once and are cached. Choose{" "}
+            <strong>Transcript</strong> as the output to skip the summary model entirely
+            (fastest — ~75&nbsp;MB download); other outputs also download a ~490&nbsp;MB summary
+            model on first use.
           </p>
           <p>
             Browser Whisper cannot auto-detect languages, so pick your language above for best

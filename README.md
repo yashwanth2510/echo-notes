@@ -11,6 +11,8 @@ Meeting (MOM) with action items — **100% in your browser**.
 - **45+ languages** (English, Hindi, Hinglish, Bengali, Tamil, Telugu, Spanish, Arabic, Japanese…)
 - 6 output modes: full MOM, summary, key points, decisions, action items, or raw transcript.
 - **Free forever** — no subscriptions, no paid tiers.
+- **Fast setup**: Transcript mode downloads only ~75 MB; full outputs download ~560 MB once
+  (Whisper 73 MB + Qwen 488 MB), then everything is cached and works offline.
 
 > Optional: with a free Supabase project you can add **Google sign-in** and sync your saved notes
 > per-account. Without it, notes are stored in your browser.
@@ -71,16 +73,22 @@ anyone can use the app locally — notes are kept in the browser.
 All local AI defaults are overridable via env:
 
 ```
-NEXT_PUBLIC_WHISPER_MODEL=Xenova/whisper-small
+NEXT_PUBLIC_WHISPER_MODEL=Xenova/whisper-base   # multilingual, ~73 MB (q8)
 NEXT_PUBLIC_WHISPER_DTYPE=q8
-NEXT_PUBLIC_LLM_MODEL=onnx-community/Qwen2.5-0.5B-Instruct
-NEXT_PUBLIC_LLM_DTYPE=q4
+NEXT_PUBLIC_LLM_MODEL=onnx-community/Qwen2.5-0.5B-Instruct  # multilingual, ~488 MB (q8)
+NEXT_PUBLIC_LLM_DTYPE=q8
 NEXT_PUBLIC_TRANSFORMER_DEVICE=wasm   # or webgpu for faster GPU inference
 ```
 
-Smaller/faster: `NEXT_PUBLIC_WHISPER_MODEL=Xenova/whisper-base` or
-`onnx-community/whisper-tiny`-style models. Higher quality but heavier:
-`onnx-community/whisper-medium-multilingual-3`.
+Presets (measured download sizes):
+- **Fastest (transcript only):** keep defaults but pick the *Transcript* output — only Whisper
+  downloads (~75 MB).
+- **Smaller Whisper, faster:** `Xenova/whisper-tiny` (~39 MB — noticeably weaker accuracy).
+- **Better accuracy (heavier):** `Xenova/whisper-small` (~238 MB, ~3x larger than base).
+- **WebGPU speedup:** `NEXT_PUBLIC_TRANSFORMER_DEVICE=webgpu` uses your GPU when available.
+
+> Note: `onnx-community/SmolLM2-*` and some other repos are access-gated on Hugging Face and
+> will fail without a token, so defaults above use open, un-gated models only.
 
 ---
 
