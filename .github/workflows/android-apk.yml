@@ -44,7 +44,10 @@ jobs:
         run: |
           set -e
           HF=https://huggingface.co
-          get() { curl -fSL --retry 3 --retry-delay 5 -o "$2" "$1" || echo "  (skip optional: $1)"; }
+          # Required files: fail the build if any is missing.
+          get() { curl -fSL --retry 3 --retry-delay 5 -o "$2" "$1"; }
+          # Optional files: skip quietly if the repo doesn't have them.
+          opt() { curl -fSL --retry 3 --retry-delay 5 -o "$2" "$1" || echo "  (optional missing: $1)"; }
 
           W=out/models/whisper-large-v3-turbo
           mkdir -p "$W/onnx"
@@ -54,8 +57,8 @@ jobs:
           get "$R/preprocessor_config.json" "$W/preprocessor_config.json"
           get "$R/tokenizer.json" "$W/tokenizer.json"
           get "$R/tokenizer_config.json" "$W/tokenizer_config.json"
-          get "$R/special_tokens_map.json" "$W/special_tokens_map.json"
-          get "$R/added_tokens.json" "$W/added_tokens.json"
+          opt "$R/special_tokens_map.json" "$W/special_tokens_map.json"
+          opt "$R/added_tokens.json" "$W/added_tokens.json"
           get "$R/onnx/encoder_model_q4f16.onnx" "$W/onnx/encoder_model_q4f16.onnx"
           get "$R/onnx/decoder_model_merged_q4f16.onnx" "$W/onnx/decoder_model_merged_q4f16.onnx"
 
@@ -66,12 +69,13 @@ jobs:
           get "$RQ/generation_config.json" "$Q/generation_config.json"
           get "$RQ/tokenizer.json" "$Q/tokenizer.json"
           get "$RQ/tokenizer_config.json" "$Q/tokenizer_config.json"
-          get "$RQ/vocab.json" "$Q/vocab.json"
-          get "$RQ/merges.txt" "$Q/merges.txt"
-          get "$RQ/special_tokens_map.json" "$Q/special_tokens_map.json"
-          get "$RQ/onnx/decoder_model_merged_quantized.onnx" "$Q/onnx/decoder_model_merged_quantized.onnx"
+          opt "$RQ/vocab.json" "$Q/vocab.json"
+          opt "$RQ/merges.txt" "$Q/merges.txt"
+          opt "$RQ/special_tokens_map.json" "$Q/special_tokens_map.json"
+          get "$RQ/onnx/model_quantized.onnx" "$Q/onnx/model_quantized.onnx"
 
           echo "Bundled model size:"; du -sh out/models
+          echo "Weight files:"; find out/models -name "*.onnx" -exec ls -lh {} \;
 
       - name: Bundle ONNX Runtime WASM files
         run: |
