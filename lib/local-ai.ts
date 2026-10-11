@@ -204,6 +204,12 @@ export async function summarize(
   });
 
   const raw = out?.[0]?.generated_text;
+  if (Array.isArray(raw)) {
+    const last = [...raw].reverse().find(
+      (m) => m && typeof m === "object" && m.role === "assistant" && typeof m.content === "string"
+    ) as { content?: string } | undefined;
+    if (last && last.content) return last.content.trim();
+  }
   if (typeof raw === "string") return raw.trim();
   if (raw && typeof raw === "object") {
     const content = (raw as { content?: string }).content;

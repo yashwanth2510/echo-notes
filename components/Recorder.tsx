@@ -299,6 +299,7 @@ export default function Recorder() {
         setStep("summarizing");
         text = await summarize(transcript, mode, language, onProgress);
         setProgress(null);
+        if (!text) text = transcript;
       }
 
       setResult(text);
