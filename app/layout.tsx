@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Echo Notes — voice notes to Minutes of Meeting",
   description:
-    "Record a voice note or meeting and get a clean transcript, summary, and action items — everything runs on your device, free and offline.",
+    "Record a voice note or meeting and get a clean transcript, summary, and action items — processed by your own AI provider or fully on your device, free.",
 };
 
 export default function RootLayout({

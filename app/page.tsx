@@ -54,7 +54,8 @@ export default function Home() {
           <p className="lead hero-lead">
             Record a voice note, a meeting, or a class. Echo Notes transcribes it and turns it
             into a clean summary with decisions and action items —{" "}
-            <strong>all of it runs in your browser</strong>, fully offline.
+            <strong>online via the AI provider you choose</strong>, or{" "}
+            <strong>fully on your device</strong> and offline.
           </p>
           <div className="hero-cta">
             <a href="#recorder" className="btn-landing btn-landing-primary">Start recording</a>
@@ -106,15 +107,15 @@ export default function Home() {
               <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z" />
             </FeatureIcon>
             <h3>45+ languages</h3>
-            <p>Hindi, Tamil, Bengali, Spanish, Arabic, Japanese and 40 more — with auto-detect.</p>
+            <p>Hindi, Tamil, Bengali, Spanish, Arabic, Japanese and 40 more.</p>
           </div>
           <div className="feature-card">
             <FeatureIcon>
               <rect x="3" y="11" width="18" height="11" rx="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </FeatureIcon>
-            <h3>Private by design</h3>
-            <p>Everything happens on your device — your voice never leaves your browser or your PC.</p>
+            <h3>Private by choice</h3>
+            <p>On-device mode keeps everything on your device; online mode sends audio only to the AI provider you connect.</p>
           </div>
           <div className="feature-card">
             <FeatureIcon>
@@ -123,7 +124,7 @@ export default function Home() {
               <circle cx="17.5" cy="17.5" r="2.5" />
             </FeatureIcon>
             <h3>Free</h3>
-            <p>No subscriptions, no API keys, no credit card. Runs on models living in your browser.</p>
+            <p>No subscriptions, no credit card, no mandatory account. Use the free on-device mode, or bring your own AI key.</p>
           </div>
           <div className="feature-card">
             <FeatureIcon>
@@ -151,12 +152,12 @@ export default function Home() {
           <div className="step">
             <div className="step-num">2</div>
             <h3>Transcribe</h3>
-            <p>An on-device speech engine converts your voice to text in 45+ languages.</p>
+            <p>Your voice becomes text in 45+ languages — via your connected AI service or an on-device speech engine.</p>
           </div>
           <div className="step">
             <div className="step-num">3</div>
             <h3>Get your MOM</h3>
-            <p>A local AI model writes the summary, decisions, and action items — no cloud needed.</p>
+            <p>An AI model writes the summary, decisions, and action items — online with your provider, or locally with no cloud needed.</p>
           </div>
         </div>
       </section>
@@ -194,11 +195,11 @@ export default function Home() {
       </section>
 
       <footer className="footer">
-        <p>
-          Built with Next.js · Everything runs locally in your browser.
-          <br />
-          Your voice never leaves your device — free forever, even offline.
-        </p>
+<p>
+            Built with Next.js · Online AI, or on-device offline processing.
+            <br />
+            Your notes are yours — use your own AI provider or keep everything on your device.
+          </p>
       </footer>
     </main>
   );

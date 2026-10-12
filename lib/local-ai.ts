@@ -141,7 +141,7 @@ export async function transcribe(
   return (out?.text ?? "").trim();
 }
 
-function languageInstruction(language: string): string {
+export function languageInstruction(language: string): string {
   const name = LANGUAGE_NAMES[language];
   if (!name) {
     return "Respond in the same language the transcript is mostly written in.";
@@ -152,7 +152,7 @@ function languageInstruction(language: string): string {
   return `Respond in ${name}. Keep all names and numbers unchanged.`;
 }
 
-const PROMPTS: Record<string, string> = {
+export const PROMPTS: Record<string, string> = {
   mom: `You are writing the official Minutes of Meeting (MOM).
 Produce a markdown report with exactly these sections:
 ## Summary
