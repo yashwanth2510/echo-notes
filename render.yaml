@@ -10,6 +10,24 @@ services:
         value: Echo Notes
       - key: NODE_VERSION
         value: 22.14.0
+      # === Hosted AI (server-side key, never exposed to visitors) ===
+      # Set AI_API_KEY in Render (Dashboard -> service -> Environment).
+      # Providers: OpenAI  https://api.openai.com/v1  (whisper-1 / gpt-4o-mini)
+      #             Groq     https://api.groq.com/openai/v1  (whisper-large-v3 / llama-3.3-70b-versatile)
+      - key: AI_API_BASE
+        value: https://api.groq.com/openai/v1
+        sync: false
+      - key: AI_TRANSCRIBE_MODEL
+        value: whisper-large-v3
+        sync: false
+      - key: AI_CHAT_MODEL
+        value: llama-3.3-70b-versatile
+        sync: false
+      - key: AI_API_KEY
+        sync: false
+      # Origins allowed to call /api/* (the Android app calls from https://localhost).
+      - key: ALLOWED_ORIGINS
+        value: https://echo-notes-ap43.onrender.com,https://localhost,http://localhost
       # Optional per-user note sync (Supabase). Skip to run fully offline/local.
       - key: NEXT_PUBLIC_SUPABASE_URL
         sync: false

@@ -721,92 +721,21 @@ pre.output {
   border-color: #e0b4b0;
 }
 
-/* ---------- Engine / settings ---------- */
+/* ---------- Engine badge ---------- */
 .engine-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
   margin-bottom: 14px;
 }
 
-.engine-bar select {
-  width: auto;
-  flex: 0 1 300px;
-}
-
-.engine-bar .gear {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
-}
-
-.engine-bar .gear svg {
-  margin-right: 6px;
-}
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.42);
-  display: grid;
-  place-items: center;
-  z-index: 100;
-  padding: 16px;
-}
-
-.modal {
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 22px;
-  max-width: 480px;
-  width: 100%;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
-  max-height: 90vh;
-  overflow: auto;
-}
-
-.modal h3 {
-  margin: 0 0 6px;
-}
-
-.modal p {
+.mode-badge {
+  font-size: 12px;
+  font-weight: 600;
   color: var(--muted);
-  font-size: 13px;
-  margin: 0 0 14px;
-}
-
-.presets {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.presets button {
-  font-size: 13px;
-  padding: 8px 14px;
-}
-
-.settings-field {
-  margin-bottom: 12px;
-}
-
-.settings-row {
-  margin-bottom: 6px;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 18px;
-  flex-wrap: wrap;
-}
-
-.modal-actions button {
-  font-size: 13.5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  background: var(--bg-soft);
 }
 
 /* ---------- Local processing ---------- */

@@ -54,7 +54,7 @@ export default function Home() {
           <p className="lead hero-lead">
             Record a voice note, a meeting, or a class. Echo Notes transcribes it and turns it
             into a clean summary with decisions and action items —{" "}
-            <strong>online via the AI provider you choose</strong>, or{" "}
+            <strong>instantly via a hosted AI service</strong>, or{" "}
             <strong>fully on your device</strong> and offline.
           </p>
           <div className="hero-cta">
@@ -115,7 +115,7 @@ export default function Home() {
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </FeatureIcon>
             <h3>Private by choice</h3>
-            <p>On-device mode keeps everything on your device; online mode sends audio only to the AI provider you connect.</p>
+            <p>On-device mode keeps everything on your device; online mode sends audio only to the app&apos;s hosted AI service.</p>
           </div>
           <div className="feature-card">
             <FeatureIcon>
@@ -124,7 +124,7 @@ export default function Home() {
               <circle cx="17.5" cy="17.5" r="2.5" />
             </FeatureIcon>
             <h3>Free</h3>
-            <p>No subscriptions, no credit card, no mandatory account. Use the free on-device mode, or bring your own AI key.</p>
+            <p>No subscriptions, no credit card, no account. Works out of the box — online or offline.</p>
           </div>
           <div className="feature-card">
             <FeatureIcon>
@@ -152,7 +152,7 @@ export default function Home() {
           <div className="step">
             <div className="step-num">2</div>
             <h3>Transcribe</h3>
-            <p>Your voice becomes text in 45+ languages — via your connected AI service or an on-device speech engine.</p>
+            <p>Your voice becomes text in 45+ languages — via the app&apos;s hosted AI service or an on-device speech engine.</p>
           </div>
           <div className="step">
             <div className="step-num">3</div>
@@ -198,7 +198,7 @@ export default function Home() {
 <p>
             Built with Next.js · Online AI, or on-device offline processing.
             <br />
-            Your notes are yours — use your own AI provider or keep everything on your device.
+            Your notes are yours — free to use, online or offline.
           </p>
       </footer>
     </main>

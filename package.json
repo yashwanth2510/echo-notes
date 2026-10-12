@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "serve -s out -l ${PORT:-3000}",
+    "build": "next build && npm run build:server",
+    "build:server": "esbuild server/index.js --bundle --platform=node --format=cjs --outfile=server/.build/index.js --external:express --external:multer --minify",
+    "start": "node server/.build/index.js",
     "lint": "next lint",
     "cap:sync": "cap sync android"
   },
@@ -14,6 +15,8 @@
     "@capacitor/core": "^7.0.0",
     "@huggingface/transformers": "^4.3.0",
     "@supabase/ssr": "^0.12.7",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -23,7 +26,7 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "serve": "^14.2.4",
+    "esbuild": "^0.25.0",
     "typescript": "^5.7.0"
   }
 }

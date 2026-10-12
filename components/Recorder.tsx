@@ -10,15 +10,9 @@ import {
   type ModelProgress,
 } from "@/lib/local-ai";
 import {
-  loadCloudConfig,
-  saveCloudConfig,
-  clearCloudConfig,
-  loadEnginePref,
-  saveEnginePref,
+  getBackendStatus,
   transcribeCloud,
   summarizeCloud,
-  PRESET_PROVIDERS,
-  type CloudConfig,
   type EngineMode,
 } from "@/lib/cloud-ai";
 
@@ -71,14 +65,7 @@ export default function Recorder() {
   const [step, setStep] = useState<Step>("");
   const [progress, setProgress] = useState<ModelProgress | null>(null);
   const [engine, setEngine] = useState<EngineMode>("cloud");
-  const [cloudConfig, setCloudConfig] = useState<CloudConfig | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [draft, setDraft] = useState<CloudConfig>({
-    baseUrl: "https://api.openai.com/v1",
-    apiKey: "",
-    asrModel: "whisper-1",
-    chatModel: "gpt-4o-mini",
-  });
+  const [cloudProvider, setCloudProvider] = useState("");
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
@@ -142,8 +129,23 @@ export default function Recorder() {
   }, [userId]);
 
   useEffect(() => {
-    setEngine(loadEnginePref());
-    setCloudConfig(loadCloudConfig());
+    let cancelled = false;
+    getBackendStatus()
+      .then((info) => {
+        if (cancelled) return;
+        if (info?.available) {
+          setEngine("cloud");
+          setCloudProvider(info.provider || "");
+        } else {
+          setEngine("local");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setEngine("local");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -253,62 +255,6 @@ export default function Recorder() {
     }
   };
 
-  const hostName = (baseUrl: string): string => {
-    try {
-      return new URL(baseUrl).hostname.replace(/^api\./, "");
-    } catch {
-      return baseUrl;
-    }
-  };
-
-  const changeEngine = (mode: EngineMode) => {
-    setEngine(mode);
-    saveEnginePref(mode);
-    setError("");
-  };
-
-  const openSettings = () => {
-    setDraft(
-      cloudConfig ?? {
-        baseUrl: draft.baseUrl || "https://api.openai.com/v1",
-        apiKey: draft.apiKey,
-        asrModel: draft.asrModel || "whisper-1",
-        chatModel: draft.chatModel || "gpt-4o-mini",
-      }
-    );
-    setSettingsOpen(true);
-  };
-
-  const applyPreset = (baseUrl: string, asrModel: string, chatModel: string) => {
-    setDraft((d) => ({ ...d, baseUrl, asrModel, chatModel }));
-  };
-
-  const saveSettings = () => {
-    const cfg: CloudConfig = {
-      baseUrl: draft.baseUrl.trim() || "https://api.openai.com/v1",
-      apiKey: draft.apiKey.trim(),
-      asrModel: draft.asrModel.trim(),
-      chatModel: draft.chatModel.trim(),
-    };
-    if (!cfg.apiKey) {
-      clearCloudConfig();
-      setCloudConfig(null);
-      changeEngine("local");
-    } else {
-      saveCloudConfig(cfg);
-      setCloudConfig(cfg);
-      changeEngine("cloud");
-    }
-    setSettingsOpen(false);
-  };
-
-  const removeKey = () => {
-    clearCloudConfig();
-    setCloudConfig(null);
-    changeEngine("local");
-    setSettingsOpen(false);
-  };
-
   const ensureMicPermission = async () => {
     const perms = (
       window as unknown as {
@@ -386,14 +332,14 @@ export default function Recorder() {
       const { samples } = await decodeToPcm16k(blob);
 
       let text = "";
-      if (engine === "cloud" && cloudConfig) {
+      if (engine === "cloud") {
         setStep("transcribing");
-        text = await transcribeCloud(samples, language, cloudConfig);
+        text = await transcribeCloud(samples, language);
         setProgress(null);
         if (mode !== "transcript") {
           setStep("summarizing");
           try {
-            const summary = await summarizeCloud(text, mode, language, cloudConfig);
+            const summary = await summarizeCloud(text, mode, language);
             if (summary) text = summary;
           } catch (err) {
             setError(
@@ -401,10 +347,8 @@ export default function Recorder() {
             );
           }
         }
-        setUsedProvider(`online ${hostName(cloudConfig.baseUrl)} · nothing downloaded`);
-      } else if (engine === "cloud") {
-        throw new Error(
-          "Online mode is selected but no AI service key is set. Open Settings to add one, or switch the mode to On-device.",
+        setUsedProvider(
+          `online AI${cloudProvider ? ` · ${cloudProvider}` : ""} · nothing downloaded`,
         );
       } else {
         setStep("transcribing");
@@ -513,26 +457,11 @@ export default function Recorder() {
         </div>
 
         <div className="engine-bar">
-          <select
-            value={engine}
-            onChange={(e) => changeEngine(e.target.value as EngineMode)}
-            disabled={status === "processing" || status === "recording"}
-            aria-label="AI engine"
-          >
-            <option value="cloud">Online AI — fast, no downloads</option>
-            <option value="local">On-device — offline, downloads once</option>
-          </select>
-          <button
-            className="btn-ghost gear"
-            onClick={openSettings}
-            disabled={status === "processing"}
-          >
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
-            </svg>
-            AI settings
-          </button>
+          <span className="mode-badge">
+            {engine === "cloud"
+              ? `Online AI${cloudProvider ? ` · ${cloudProvider}` : ""} · auto`
+              : "On-device mode · offline"}
+          </span>
         </div>
 
         {status === "recording" && (
@@ -618,92 +547,18 @@ export default function Recorder() {
 
         <div className="hint">
           <p>
-            <strong>Online AI</strong> (default): your recording is transcribed and summarized by
-            the AI provider you connect under <strong>AI settings</strong> — no model downloads,
-            fast on any device. Your audio is sent to that provider.
+            <strong>Online AI:</strong> your recording is transcribed and summarized by the app&apos;s
+            hosted AI service — no downloads, no keys to enter, fast on any device. Your audio is
+            sent to that service for processing.
           </p>
           <p>
-            <strong>On-device:</strong> everything stays in your browser and works offline. Models
-            (~1&nbsp;GB total) download once and are cached. Choosing{" "}
-            <strong>Transcript</strong> as the output skips the summary model. On-device
-            transcription can&apos;t auto-detect languages, so pick your language above for best
-            accuracy.
+            <strong>On-device</strong> (picked automatically only when the online service is
+            unreachable): everything stays in your browser and works offline. Models
+            (~1&nbsp;GB total) download once and are cached. Choosing <strong>Transcript</strong>{" "}
+            skips the summary model. On-device transcription can&apos;t auto-detect languages, so
+            pick your language above for best accuracy.
           </p>
         </div>
-
-        {settingsOpen && (
-          <div className="modal-backdrop" onClick={() => setSettingsOpen(false)}>
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
-              <h3>AI settings</h3>
-              <p>
-                Online mode sends your audio and transcript to the provider you choose; nothing is
-                downloaded to this device. On-device mode keeps everything here but downloads the
-                models once. Either way, your key stays only in this browser.
-              </p>
-              <div className="presets">
-                {PRESET_PROVIDERS.map((p) => (
-                  <button
-                    key={p.label}
-                    className="btn-ghost"
-                    onClick={() => applyPreset(p.baseUrl, p.asrModel, p.chatModel)}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-              <label className="field settings-field">
-                API base URL
-                <input
-                  type="text"
-                  value={draft.baseUrl}
-                  onChange={(e) => setDraft((d) => ({ ...d, baseUrl: e.target.value }))}
-                  placeholder="https://api.openai.com/v1"
-                />
-              </label>
-              <label className="field settings-field">
-                API key
-                <input
-                  type="password"
-                  value={draft.apiKey}
-                  onChange={(e) => setDraft((d) => ({ ...d, apiKey: e.target.value }))}
-                  placeholder="sk-…"
-                  autoComplete="off"
-                />
-              </label>
-              <div className="row settings-row">
-                <label className="field">
-                  Transcription model
-                  <input
-                    type="text"
-                    value={draft.asrModel}
-                    onChange={(e) => setDraft((d) => ({ ...d, asrModel: e.target.value }))}
-                    placeholder="whisper-1"
-                  />
-                </label>
-                <label className="field">
-                  Notes model
-                  <input
-                    type="text"
-                    value={draft.chatModel}
-                    onChange={(e) => setDraft((d) => ({ ...d, chatModel: e.target.value }))}
-                    placeholder="gpt-4o-mini"
-                  />
-                </label>
-              </div>
-              <div className="modal-actions">
-                <button onClick={saveSettings}>Save</button>
-                {cloudConfig && (
-                  <button className="btn-ghost" onClick={removeKey}>
-                    Remove key
-                  </button>
-                )}
-                <button className="btn-ghost" onClick={() => setSettingsOpen(false)}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {error && <div className="status error">{error}</div>}
         {!error && status === "idle" && result && (

@@ -57,6 +57,7 @@ jobs:
           NEXT_PUBLIC_LLM_DTYPE: q8
           NEXT_PUBLIC_TRANSFORMER_DEVICE: wasm
           NEXT_PUBLIC_WASM_PATH: https://localhost/onnx-wasm/
+          NEXT_PUBLIC_API_BASE: https://echo-notes-ap43.onrender.com
         run: npm run build
 
       - name: Download models into the bundle
@@ -109,6 +110,8 @@ jobs:
       # 2) LITE APK  (small, ~15 MB; downloads models on first run)
       # ---------------------------------------------------------------
       - name: Build web — lite (no bundled models)
+        env:
+          NEXT_PUBLIC_API_BASE: https://echo-notes-ap43.onrender.com
         run: |
           rm -rf out
           npm run build
