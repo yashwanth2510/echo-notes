@@ -115,6 +115,7 @@ jobs:
 
       - name: Assemble lite APK
         run: |
+          rm -rf android/app/src/main/assets/public android/app/build
           npx cap sync android
           chmod +x android/gradlew
           cd android && ./gradlew assembleDebug --no-daemon && cd ..

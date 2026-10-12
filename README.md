@@ -80,7 +80,10 @@ browser), so Render only needs to serve the built app.
 1. Push the repo to GitHub.
 2. https://dashboard.render.com → **New** → **Blueprint** → connect this repo.
 3. Optionally set the `NEXT_PUBLIC_SUPABASE_*` secrets (`sync: false`) for account sync.
-4. Deploy. Render gives you `https://echo-notes.onrender.com`.
+4. Deploy. Render gives you a URL like `https://echo-notes.onrender.com`. If that name is already
+   taken, Render appends a short suffix (e.g. `https://echo-notes-ap43.onrender.com`). To use a name
+   you own instead, add it under the service's **Settings → Custom Domains** and point a `CNAME`
+   at `<service>.onrender.com`.
 
 Notes:
 - Render's free web service **spins down after ~15 min idle** and cold-starts in ~30–60s on the
